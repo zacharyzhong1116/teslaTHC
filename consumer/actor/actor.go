@@ -1,9 +1,12 @@
-package consumer
+package actor
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"math/rand"
+	"log"
+	"net/http"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -14,21 +17,33 @@ type Consumer struct {
 	JobsChan   chan int
 }
 
-// callbackFunc is invoked each time the external lib passes an event to us.
-func (c Consumer) CallbackFunc(event int) {
-	c.IngestChan <- event
+// GetDataFromKafkaTopic is to emulate that get data from kafka
+func (c Consumer) GetDataFromKafkaTopic() {
+	myData := 0
+	for {
+		c.IngestChan <- myData
+		log.Printf("Emulated data from kafka %d", myData)
+		myData++
+	}
 }
 
 // workerFunc starts a single worker function that will range on the jobsChan until that channel closes.
 func (c Consumer) WorkerFunc(wg *sync.WaitGroup, index int) {
 	defer wg.Done()
 
-	fmt.Printf("Worker %d starting\n", index)
-	for eventIndex := range c.JobsChan {
-		// simulate work  taking between 1-3 seconds
-		fmt.Printf("Worker %d started job %d\n", index, eventIndex)
-		time.Sleep(time.Millisecond * time.Duration(1000+rand.Intn(2000)))
-		fmt.Printf("Worker %d finished processing job %d\n", index, eventIndex)
+	for myInteger := range c.JobsChan {
+
+		fmt.Printf("Worker %d started job %d\n", index, myInteger)
+		payload := `{"Mydata: "}` + strconv.FormatInt(int64(myInteger), 10)
+		url := "DB service URL"
+		//todo: error handle
+		req, _ := http.NewRequest("POST", url, bytes.NewReader([]byte(payload)))
+		client := &http.Client{}
+		//todo: error handle and responce handler
+		response, _ := client.Do(req)
+		fmt.Printf("%v", response)
+		time.Sleep(time.Millisecond * time.Duration(50))
+		log.Printf("Worker %d finished processing job %d\n", index, myInteger)
 	}
 	fmt.Printf("Worker %d interrupted\n", index)
 }
@@ -38,7 +53,7 @@ func (c Consumer) StartConsumer(ctx context.Context) {
 	for {
 		select {
 		case job := <-c.IngestChan:
-			c.JobsChan <- job
+			c.JobsChan <- job // get the integer from kafak and pass to worker
 		case <-ctx.Done():
 			fmt.Println("Consumer received cancellation signal, closing jobsChan!")
 			close(c.JobsChan)

@@ -1,20 +1,26 @@
-package dbopers
+package database
 
-type persistence interface {
-	Insert(data int) error
-	Update(data interface{}) error
-	Delete(id string) error
-}
+import (
+	"net/http"
 
-//
-
-const (
-	host     = "myhost"
-	port     = 5432
-	user     = "myuser"
-	password = "mypassword"
-	dbname   = "mydb"
+	"teslaTHC/database/utils"
 )
 
-type datebase struct {
+// suppose get those security infro vault or somewhere else
+const (
+	HOST     = "myhost"
+	PORT     = 5432
+	USER     = "myuser"
+	PASSWORD = "mypassword"
+	ADDRESS  = "myaddress"
+)
+
+func main() {
+	exitCahnnel := make(chan int)
+
+	per.Init()
+	r := utils.NewRouter()
+	http.ListenAndServe(ADDRESS, r)
+	<-exitCahnnel
 }
+
